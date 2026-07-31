@@ -2,7 +2,7 @@
 
 ## Idea central para abrir la exposición
 
-> “La práctica toma una aplicación de inventario en Node.js, la prueba y empaqueta con Docker, intenta publicar su imagen con GitHub Actions y GHCR, y la despliega manualmente en Kubernetes. Se implementaron Rolling Update, una demostración Blue-Green, Secrets y health checks. El estado real también presenta observaciones importantes en Trivy, las probes y las métricas DORA.”
+> “La práctica toma una aplicación de inventario en Node.js, la prueba y empaqueta con Docker, publica su imagen con GitHub Actions y GHCR, y la despliega manualmente en Kubernetes. Se implementaron Rolling Update, una demostración Blue-Green, Secrets, análisis con Trivy y health checks.”
 
 ## Mapa rápido del proyecto
 
@@ -21,10 +21,10 @@
 Estas respuestas toman como referencia los archivos reales, incluso cuando contradicen al informe o a los `.md`.
 
 1. **El deploy a Kubernetes no está automatizado.** `.github/workflows/ci-cd.yml` no contiene `kubectl`, credenciales del clúster ni un job de deploy. El despliegue descrito en `README.md` es manual.
-2. **Trivy está en un orden incorrecto.** En `.github/workflows/ci-cd.yml` intenta escanear la imagen con el SHA antes de construirla. La captura del `informe_practica_cicd.pdf` también muestra ese paso en rojo.
-3. **La liveness probe puede reiniciar el Pod durante el arranque lento.** En `k8s/deployment.yaml`, `/health` falla durante 30 segundos, pero liveness comienza a los 5 segundos y conserva el umbral predeterminado de 3 fallos. Readiness no mata Pods; liveness sí puede reiniciarlos.
+2. **Trivy se ejecuta antes de publicar.** En `.github/workflows/ci-cd.yml` primero se construye la imagen local, luego Trivy busca vulnerabilidades críticas y solo después se inicia sesión y se publica en GHCR.
+3. **La `startupProbe` protege el arranque lento.** Mientras `/health` devuelve `503` durante 30 segundos, Kubernetes todavía no ejecuta las probes de readiness y liveness. Así se evita un ciclo de reinicios prematuros.
 4. **Blue y Green usan la misma imagen.** Ambos manifiestos apuntan a `ghcr.io/scomygod/inventario-app:latest`; se diferencian por `APP_COLOR` y `APP_VERSION`.
-5. **El Secret se inyecta, pero la aplicación no usa `API_KEY`.** Los YAML contienen `secretKeyRef`, pero `server.js` nunca lee `process.env.API_KEY`.
+5. **El Secret se inyecta y la aplicación consume `API_KEY`.** Los YAML contienen `secretKeyRef` y `server.js` usa la variable para proteger `GET /api/admin/check` mediante el encabezado `x-api-key`.
 6. **Las métricas DORA del PDF no son verificables con este repositorio.** El informe lista hashes que no aparecen en el historial y no existen logs de despliegue. Deben presentarse como cifras del informe, no como datos demostrables desde los archivos actuales.
 7. **Al recrear un Pod no queda el catálogo “vacío”.** Se pierden los productos añadidos, pero `db.js` vuelve a crear tres productos iniciales mediante `SEED`.
 
@@ -172,7 +172,7 @@ Estas respuestas toman como referencia los archivos reales, incluso cuando contr
 
 **Archivo donde está:** `k8s/deployment.yaml`, `k8s/blue-green/deployment-blue.yaml`, `k8s/blue-green/deployment-green.yaml`, `README.md`
 
-**Cómo responder en menos de 30 segundos:** “El valor no está versionado: Kubernetes lo inyecta desde `api-secret`. Sin embargo, el código actual no utiliza `API_KEY`; solo demuestra la inyección.”
+**Cómo responder en menos de 30 segundos:** “El valor no está versionado: Kubernetes lo inyecta desde `api-secret` y la aplicación lo compara con el encabezado `x-api-key` para autorizar `/api/admin/check`.”
 
 - **Posibles preguntas del profesor:** ¿El Secret está en Git? ¿Qué pasa si no existe?
 - **Respuestas cortas para memorizar:** “No; solo está la referencia y el comando de creación.” / “El Pod no inicia porque la referencia no es opcional.”
@@ -383,7 +383,7 @@ Estas respuestas toman como referencia los archivos reales, incluso cuando contr
     No. Se crea manualmente y los YAML solo contienen `secretKeyRef`.
 
 27. **¿La aplicación usa realmente `API_KEY`?**  
-    No. Se inyecta en el contenedor, pero `server.js` no la consulta.
+    Sí. `server.js` la compara con el encabezado `x-api-key` para proteger `GET /api/admin/check`.
 
 28. **¿Qué ocurre si `api-secret` no existe?**  
     El Pod no puede iniciar porque la referencia es obligatoria.
