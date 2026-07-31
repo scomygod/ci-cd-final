@@ -1,0 +1,66 @@
+name: CI/CD Pipeline
+
+env:
+  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/inventario-app
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v6
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Ejecutar pruebas
+        run: npm test
+
+  build-push:
+    needs: build-test # principle fail-fast
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write # Permisos para publicar en ghcr.io
+
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v6
+
+      - name: Construir imagen Docker para escaneo
+        run: docker build --tag "${IMAGE_NAME}:${GITHUB_SHA}" .
+
+      # --- COMPONENTE 2: ESCANEO DE SEGURIDAD CON TRIVY ---
+      - name: Escaneo de vulnerabilidades con Trivy
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: '${{ env.IMAGE_NAME }}:${{ github.sha }}'
+          format: 'table'
+          exit-code: '1' # Falla el pipeline si encuentra vulnerabilidades de severidad CRITICAL
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL'
+
+      - name: Login en GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publicar imagen Docker
+        run: |
+          docker push "${IMAGE_NAME}:${GITHUB_SHA}"
+          docker tag "${IMAGE_NAME}:${GITHUB_SHA}" "${IMAGE_NAME}:latest"
+          docker push "${IMAGE_NAME}:latest"

@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inventario-app-blue
+  namespace: inventario-lab
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: inventario
+      version: blue # Etiqueta clave
+  template:
+    metadata:
+      labels:
+        app: inventario
+        version: blue
+    spec:
+      containers:
+      - name: inventario-container
+        image: ghcr.io/scomygod/inventario-app:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 3000
+        env:
+        - name: APP_COLOR
+          value: "blue"
+        - name: APP_VERSION
+          value: "v1"
+        - name: API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: api-secret
+              key: API_KEY
+        - name: STARTUP_DELAY_SECONDS
+          value: "30"
+        startupProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          periodSeconds: 5
+          failureThreshold: 12
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          failureThreshold: 10

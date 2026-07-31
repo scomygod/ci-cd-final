@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inventario-app
+  namespace: inventario-lab
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: inventario
+      track: base
+  template:
+    metadata:
+      labels:
+        app: inventario
+        track: base
+    spec:
+      containers:
+      - name: inventario-container
+        image: ghcr.io/scomygod/inventario-app:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 3000
+
+        # --- COMPONENTE 1: MANEJO DE SECRETOS Y COMPONENTE 3: ARRANQUE LENTO ---
+        env:
+        - name: API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: api-secret
+              key: API_KEY
+
+        - name: STARTUP_DELAY_SECONDS
+          value: "30" # La app esperará 30 segundos antes de ponerse lista
+
+        # --- PROBES DE SALUD ---
+        startupProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          periodSeconds: 5
+          failureThreshold: 12 # Tolera hasta 60s de arranque antes de reiniciar
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          failureThreshold: 10 # Tolera hasta 10 fallos (50s total) para dar tiempo a los 30s de retardo
