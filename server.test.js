@@ -154,6 +154,23 @@ test('PATCH /api/products/:id actualiza un producto existente', async () => {
   server.close();
 });
 
+test('GET y PATCH responden 404 para un producto inexistente', async () => {
+  const app = createApp();
+  const server = await startServer(app);
+
+  const get = await request(server, 'GET', '/api/products/id-inexistente');
+  assert.strictEqual(get.status, 404);
+  assert.strictEqual(get.body.error, 'producto no encontrado');
+
+  const patch = await request(server, 'PATCH', '/api/products/id-inexistente', {
+    stock: 10,
+  });
+  assert.strictEqual(patch.status, 404);
+  assert.strictEqual(patch.body.error, 'producto no encontrado');
+
+  server.close();
+});
+
 test('POST /api/products sin name/sku responde 400', async () => {
   const app = createApp();
   const server = await startServer(app);
