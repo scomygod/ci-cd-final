@@ -55,6 +55,12 @@ npm test
 # Levantar la aplicación localmente en un puerto aislado
 PORT=31010 npm start
 ```
+
+La suite automatizada valida el estado y la versión de la aplicación, la
+protección mediante API key y el ciclo de vida de los productos: creación,
+consulta, actualización, eliminación y respuestas `404` para identificadores
+inexistentes.
+
 *Abre `http://127.0.0.1:31010`. Si creas un producto, cierras el servidor y lo vuelves a iniciar, el producto sigue ahí porque se guarda en `data/products.json`.*
 
 ### Paso 2: Empaquetado con Docker (Multi-stage)
