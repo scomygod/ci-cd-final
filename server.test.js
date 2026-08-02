@@ -130,6 +130,30 @@ test('DELETE /api/products/:id elimina el producto', async () => {
   server.close();
 });
 
+test('PATCH /api/products/:id actualiza un producto existente', async () => {
+  const app = createApp();
+  const server = await startServer(app);
+
+  const created = await request(server, 'POST', '/api/products', {
+    name: 'Producto original',
+    sku: 'UPD-001',
+    stock: 2,
+    price: 5,
+  });
+
+  const updated = await request(server, 'PATCH', '/api/products/' + created.body.id, {
+    name: 'Producto actualizado',
+    stock: 8,
+  });
+
+  assert.strictEqual(updated.status, 200);
+  assert.strictEqual(updated.body.name, 'Producto actualizado');
+  assert.strictEqual(updated.body.stock, 8);
+  assert.strictEqual(updated.body.sku, 'UPD-001');
+
+  server.close();
+});
+
 test('POST /api/products sin name/sku responde 400', async () => {
   const app = createApp();
   const server = await startServer(app);
