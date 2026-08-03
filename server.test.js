@@ -171,6 +171,33 @@ test('GET y PATCH responden 404 para un producto inexistente', async () => {
   server.close();
 });
 
+test('PATCH normaliza numeros y rechaza valores negativos', async () => {
+  const app = createApp();
+  const server = await startServer(app);
+
+  const created = await request(server, 'POST', '/api/products', {
+    name: 'Producto numerico',
+    sku: 'NUM-001',
+    stock: 1,
+    price: 2,
+  });
+
+  const normalized = await request(server, 'PATCH', '/api/products/' + created.body.id, {
+    stock: '7',
+    price: '12.50',
+  });
+  assert.strictEqual(normalized.status, 200);
+  assert.strictEqual(normalized.body.stock, 7);
+  assert.strictEqual(normalized.body.price, 12.5);
+
+  const invalid = await request(server, 'PATCH', '/api/products/' + created.body.id, {
+    price: -2,
+  });
+  assert.strictEqual(invalid.status, 400);
+
+  server.close();
+});
+
 test('POST /api/products sin name/sku responde 400', async () => {
   const app = createApp();
   const server = await startServer(app);
