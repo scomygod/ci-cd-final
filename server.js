@@ -87,7 +87,11 @@ function createApp() {
   });
 
   app.patch('/api/products/:id', (req, res) => {
-    const updated = db.update(req.params.id, req.body || {});
+    const patch = normalizeProductNumbers(req.body || {});
+    if (!patch) {
+      return res.status(400).json({ error: 'stock y price deben ser numeros no negativos' });
+    }
+    const updated = db.update(req.params.id, patch);
     if (!updated) return res.status(404).json({ error: 'producto no encontrado' });
     res.status(200).json(updated);
   });
