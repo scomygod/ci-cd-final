@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Catalogo de inventario con interfaz web y base de datos local (JSON) - punto de partida para la tarea de CI/CD",
   "main": "server.js",
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "start": "node server.js",
     "test": "node --test"
