@@ -9,6 +9,16 @@ const SIMULATE_FAILURE = process.env.SIMULATE_FAILURE === 'true';
 const STARTUP_DELAY = parseInt(process.env.STARTUP_DELAY_SECONDS || '0', 10);
 const startTime = Date.now();
 
+function normalizeProductNumbers(product) {
+  const normalized = { ...product };
+  for (const field of ['stock', 'price']) {
+    if (product[field] === undefined) continue;
+    const value = Number(product[field]);
+    if (!Number.isFinite(value) || value < 0) return null;
+    normalized[field] = value;
+  }
+  return normalized;
+}
 
 function createApp() {
   const app = express();
@@ -68,7 +78,11 @@ function createApp() {
     if (!name || !sku) {
       return res.status(400).json({ error: 'name y sku son obligatorios' });
     }
-    const product = db.create({ name, sku, stock, price });
+    const input = normalizeProductNumbers({ name, sku, stock, price });
+    if (!input) {
+      return res.status(400).json({ error: 'stock y price deben ser numeros no negativos' });
+    }
+    const product = db.create(input);
     res.status(201).json(product);
   });
 
