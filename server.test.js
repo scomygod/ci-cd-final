@@ -178,3 +178,26 @@ test('POST /api/products sin name/sku responde 400', async () => {
   assert.strictEqual(res.status, 400);
   server.close();
 });
+
+test('POST /api/products rechaza stock y price invalidos', async () => {
+  const app = createApp();
+  const server = await startServer(app);
+
+  const negativeStock = await request(server, 'POST', '/api/products', {
+    name: 'Stock invalido',
+    sku: 'INV-001',
+    stock: -1,
+    price: 10,
+  });
+  assert.strictEqual(negativeStock.status, 400);
+
+  const invalidPrice = await request(server, 'POST', '/api/products', {
+    name: 'Precio invalido',
+    sku: 'INV-002',
+    stock: 1,
+    price: 'no-es-un-numero',
+  });
+  assert.strictEqual(invalidPrice.status, 400);
+
+  server.close();
+});
